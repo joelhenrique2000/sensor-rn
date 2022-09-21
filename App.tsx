@@ -17,7 +17,11 @@ import {
   NativeModules,
   NativeEventEmitter,
   DeviceEventEmitter,
+  Vibration,
+  View,
+  Image,
 } from 'react-native';
+import Torch from 'react-native-torch';
 
 import {Observable} from 'rxjs';
 import {filter, map, publish, refCount} from 'rxjs/operators';
@@ -90,15 +94,14 @@ const App = () => {
   const LIGHT_SENSOR = 'LightSensor';
 
   const isDarkMode = useColorScheme() === 'dark';
-  const [test, setTest] = useState(0);
-  const [result, setResult] = React.useState<number | undefined>();
+  const [proximity, setProximity] = React.useState<number | undefined>();
 
   useEffect(() => {
     startLightSensor();
     const subscription = DeviceEventEmitter.addListener(
       LIGHT_SENSOR,
       (data: {lightValue: number}) => {
-        setResult(data.lightValue);
+        setProximity(data.lightValue);
       },
     );
 
@@ -108,13 +111,55 @@ const App = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (proximity < 0.5) {
+      Torch.switchState(true);
+      Vibration.vibrate([150000]);
+    } else {
+      Torch.switchState(false);
+    }
+  }, [proximity]);
+
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
   };
 
   return (
     <SafeAreaView style={backgroundStyle}>
-      <Text>{result}</Text>
+      <View
+        style={{
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+        }}>
+        {proximity < 0.6 ? (
+          <Image
+            style={{
+              width: '50%',
+              height: '50%',
+            }}
+            source={require('./assets/eleven.jpg')}
+          />
+        ) : (
+          <Image
+            style={{
+              width: '50%',
+              height: '50%',
+            }}
+            source={require('./assets/demogorgon.jpg')}
+          />
+        )}
+        <Text
+          style={{
+          color: "#FFF",
+          fontSize: 20
+        }}>
+          {proximity < 0.6
+            ? 'mão está próxima do sensor'
+            : 'mão não está próxima do sensor'}
+        </Text>
+      </View>
+      
     </SafeAreaView>
   );
 };
