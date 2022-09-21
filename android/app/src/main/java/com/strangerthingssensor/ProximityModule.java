@@ -11,6 +11,10 @@ import com.facebook.react.bridge.Promise;
 import java.util.Date;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Timer;
+import java.util.TimerTask;
+
+import android.os.SystemClock;
 import android.util.Log;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 import com.facebook.react.bridge.WritableMap;
@@ -29,65 +33,91 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+import android.util.Log;
+
+import androidx.annotation.NonNull;
+
+import com.facebook.react.bridge.Arguments;
+import com.facebook.react.bridge.Promise;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
+import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.module.annotations.ReactModule;
+import com.facebook.react.modules.core.DeviceEventManagerModule;
 
 
 public class ProximityModule  extends ReactContextBaseJavaModule  implements SensorEventListener {
 
-    private int eventCount = 0;
-    private Boolean isSensorActivated = false;
-    SensorManager sensorManager;
-    Sensor proximitySensor;
-
-
-    private static final String TAG = "RNProximityModule";
-    private static final String KEY_PROXIMITY = "proximity";
-    private static final String KEY_DISTANCE = "distance";
-    private static final String KEY_EVENT_ON_SENSOR_CHANGE = "EVENT_ON_SENSOR_CHANGE";
-    private static final String EVENT_ON_SENSOR_CHANGE = "onSensorChanged";
-    private final ReactApplicationContext reactContext;
-
-
-    private SensorManager mSensorManager;
-    private Sensor mProximity;
-
+    public static final String NAME = "JesusSensor";
+    private final SensorManager mSensorManager;
+    private final Sensor mSensorLight;
+    private final ReactApplicationContext mReactContext;
 
     ProximityModule(ReactApplicationContext context) {
         super(context);
 
-
-        this.reactContext = context;
-        mSensorManager = (SensorManager) reactContext.getSystemService(Context.SENSOR_SERVICE);
-        mProximity = mSensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY);
+        mReactContext = context;
+        mSensorManager = (SensorManager) mReactContext.getSystemService(mReactContext.SENSOR_SERVICE);
+        mSensorLight = mSensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
     }
-
 
 
     @Override
     public String getName() {
-        return "ProximityModule";
+        return NAME;
     }
 
-    @ReactMethod
-    public void createCalendarEvent(String name, String location) {
-        Log.d("CalendarModule", "Create event called with name: " + name
-                + " and location: " + location);
-    }
-
-    @ReactMethod
-    public void createCalendarPromise(Promise promise) {
+    private void sendEvent(@NonNull WritableMap params) {
         try {
-            int i = (int) new Date().getTime();
-
-            WritableMap params = Arguments.createMap();
-           /* params.putBoolean("isSensorActivated", isSensorActivated);
-
-            promise.resolve("Data returned from promise");
-            //sendEvent("AproximityEvent", params);*/
-        } catch (Exception e) {
-            promise.reject("Err");
+            if (mReactContext != null) {
+                mReactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                        .emit("LightSensor", params);
+            }
+        } catch (RuntimeException e) {
+            Log.d("ERROR", "error in sending event");
         }
     }
 
+    @Override
+    public final void onSensorChanged(SensorEvent sensorEvent) {
+        WritableMap sensorMap = Arguments.createMap();
+        float lightSensorValue = sensorEvent.values[0];
+        sensorMap.putDouble("lightValue", lightSensorValue);
+        sendEvent(sensorMap);
+    }
+
+    @Override
+    public final void onAccuracyChanged(Sensor sensor, int accuracy) {
+    }
+
+    @ReactMethod
+    public void startLightSensor() {
+        if (mSensorLight == null) {
+            return;
+        }
+        mSensorManager.registerListener(this, mSensorLight, SensorManager.SENSOR_DELAY_NORMAL);
+    }
+
+    @ReactMethod
+    public void stopLightSensor() {
+        if (mSensorLight == null) {
+            return;
+        }
+        mSensorManager.unregisterListener(this);
+    }
+
+
+    /*@Override
+    public String getName() {
+        return "ProximityModule";
+    }*/
+
+/*
     private void sendEvent(ReactContext reactContext,
                            String eventName,
                            int params) {
@@ -95,22 +125,19 @@ public class ProximityModule  extends ReactContextBaseJavaModule  implements Sen
                 .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
                 .emit(eventName, params);
     }
-/*
+
+    */
+
+    /*
     private void sendEvent(String eventName, @Nullable WritableMap params) {
         reactContext
                 .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
                 .emit(eventName, params);
     }*/
-/*
-    @ReactMethod
-    public void addListener() {
-        mSensorManager.registerListener(this, mProximity, SensorManager.SENSOR_DELAY_NORMAL);
-    }
 
-    @ReactMethod
-    public void removeListener() {
-        mSensorManager.unregisterListener(this);
-    }
+
+/*
+
 
     @Override
     public Map<String, Object> getConstants() {
@@ -120,8 +147,8 @@ public class ProximityModule  extends ReactContextBaseJavaModule  implements Sen
     }
 */
 
- 
 
+/*
     @Override
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor.getType() == Sensor.TYPE_PROXIMITY) {
@@ -130,7 +157,7 @@ public class ProximityModule  extends ReactContextBaseJavaModule  implements Sen
             sendEvent(getReactApplicationContext(),"AproximityEvent", i);
         }
     }
-
+*/
 
     //@Override
     public void onSeansorChanged(SensorEvent sensorEvent) {
@@ -144,12 +171,14 @@ public class ProximityModule  extends ReactContextBaseJavaModule  implements Sen
         params.putDouble(KEY_DISTANCE, distance);
 
         sendEvent(EVENT_ON_SENSOR_CHANGE, params);*/
-        int i = (int) new Date().getTime();
-        sendEvent(getReactApplicationContext(),"AproximityEvent", i);
+       /* int i = (int) new Date().getTime();
+        sendEvent(getReactApplicationContext(),"AproximityEvent", i);*/
     }
-
+/*
     @Override
     public void onAccuracyChanged(Sensor sensor, int i) {
 
-    }
+    }*/
+
+
 }
